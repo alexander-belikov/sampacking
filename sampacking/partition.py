@@ -1,5 +1,5 @@
 from numpy import zeros, arange, array, concatenate, \
-    argsort, abs, sum, argmin, std, mean, tile, argwhere, where, ceil
+    argsort, abs, sum, argmin, std, mean, tile, argwhere, ceil, floor, log10, argsort
 from scipy.stats import ks_2samp
 from copy import deepcopy
 
@@ -449,6 +449,7 @@ def bin_packing_mean(pdfs_input, number_bins, distance_func=ks_2samp):
     indices_output.extend(indices)
     return indices_output
 
+
 def check_packing(list_indices, weights, pdfs, distance_func=ks_2samp_multi_dim):
     """
     return stats of the partition
@@ -472,6 +473,31 @@ def check_packing(list_indices, weights, pdfs, distance_func=ks_2samp_multi_dim)
     std_ps = std(ps)
     rhos = list(map(lambda x: distance_func(concatenate(x), sample0)[0], pdf_bins))
     return mean_ps, std_ps, min(rhos), max(rhos)
+
+
+def add_delta_equal_weights(input_weights):
+    inds_sorted_weights = argsort(input_weights)
+    print(input_weights[:5], inds_sorted_weights[:5])
+    weights = [input_weights[j] for j in inds_sorted_weights]
+    print(weights[:30])
+    diffs = [y - x for x, y in zip(weights[:-1], weights[1:])]
+    print(diffs[:30])
+    #boundaries when there is a change weight
+    bbs = [0] + [j + 1 for j in range(len(diffs)) if diffs[j] != 0]
+    delta = array([abs(x) for x in diffs if x != 0]).min()
+    print(delta)
+    nmax = array([x - y for x, y in zip(bbs[1:], bbs[:-1])]).max()
+    delta2use = 10**(floor(log10(delta)) - ceil(log10(nmax)) - 2)
+    bbs_extra = bbs + [len(weights)]
+    print(len(bbs_extra))
+    lens = [x - y for x, y in zip(bbs_extra[1:], bbs_extra[:-1])]
+    print(len(lens))
+    ws2 = [[weights[i] + k*delta2use for k in range(ll)] for i, ll in zip(bbs, lens)]
+    w3 = [w for sublist in ws2 for w in sublist]
+    rev_inds = sorted(list(zip(inds_sorted_weights,
+                               range(len(inds_sorted_weights)))), key=lambda x: x[0])
+    output_weights = [w3[rev_inds[k][1]] for k in range(len(rev_inds))]
+    return output_weights
 
 
 # old material beyond this point
